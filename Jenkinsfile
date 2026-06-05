@@ -13,25 +13,18 @@ pipeline {
             steps {
                 cleanWs()
                 checkout scm
-                echo "✅ Code IA Chatbot récupéré avec succès (SANS MAVEN)"
+                echo "✅ Code IA Chatbot récupéré avec succès"
             }
         }
 
         stage('2. Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('sonarqube') {
-                    echo "🦊 Running SonarQube Scanner via Docker..."
-                    sh """
-                        docker run --rm \
-                        -e SONAR_HOST_URL=\${SONAR_HOST_URL} \
-                        -e SONAR_TOKEN=\${SONAR_AUTH_TOKEN} \
-                        -v \${WORKSPACE}:/usr/src \
-                        sonarsource/sonar-scanner-cli \
-                        -Dsonar.projectKey=ia-chatbot-app \
-                        -Dsonar.projectName=ia-chatbot-app \
-                        -Dsonar.sources=. \
-                        -Dsonar.qualitygate.wait=false
-                    """
+                    echo "🦊 Running SonarQube Scanner localement..."
+                    sh 'export SONAR_SCANNER_OPTS="-Dsonar.js.node.version.ignore=true"'
+                    
+                
+                    sh 'npx sonar-scanner -Dsonar.projectKey=ia-chatbot-app -Dsonar.projectName=ia-chatbot-app -Dsonar.sources=. -Dsonar.qualitygate.wait=false'
                 }
             }
         }
