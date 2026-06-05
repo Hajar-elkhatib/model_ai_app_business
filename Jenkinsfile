@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_HUB_USER = 'marouamrouji'
-        IMAGE_NAME      = 'ia-chatbot-app'
+        IMAGE_NAME      = 'modèle-ia'       
         IMAGE_TAG       = "1.0.${BUILD_NUMBER}"
         REGISTRY_CRED   = 'docker-hub-credentials'
     }
@@ -22,8 +22,6 @@ pipeline {
                 withSonarQubeEnv('sonarqube') {
                     echo "🦊 Running SonarQube Scanner localement..."
                     sh 'export SONAR_SCANNER_OPTS="-Dsonar.js.node.version.ignore=true"'
-                    
-                
                     sh 'npx sonar-scanner -Dsonar.projectKey=ia-chatbot-app -Dsonar.projectName=ia-chatbot-app -Dsonar.sources=. -Dsonar.qualitygate.wait=false'
                 }
             }
@@ -50,10 +48,11 @@ pipeline {
             }
         }
 
-        stage('6. Push to Docker Hub') {
+        stage('6. Envoyer vers Docker Hub') {
             steps {
+                echo "🚀 Connexion et Push vers Docker Hub..."
                 withCredentials([usernamePassword(credentialsId: "${REGISTRY_CRED}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
+                    sh "echo '${DOCKER_PASS}' | docker login -u '${DOCKER_USER}' --password-stdin"
                     sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}"
                     sh "docker tag ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
                     sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
