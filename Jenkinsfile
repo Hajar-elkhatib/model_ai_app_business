@@ -2,82 +2,81 @@ pipeline {
     agent any
 
     environment {
-        IMAGE = "marouamrouji/backend-app"
-        TAG = "1.0.${env.BUILD_NUMBER}"
+        DOCKER_HUB_USER = 'marouamrouji'
+        IMAGE_NAME      = 'ia-chatbot-app'
+        IMAGE_TAG       = "1.0.${BUILD_NUMBER}"
+        REGISTRY_CRED   = 'docker-hub-credentials'
     }
 
     stages {
-
-        stage('1. Checkout') {
+        stage('1. Checkout SCM') {
             steps {
+                cleanWs()
                 checkout scm
-                echo 'Code récupéré depuis GitHub ✓'
+                echo "✅ Code IA Chatbot récupéré avec succès (SANS MAVEN)"
             }
         }
 
-        stage('2. Build Spring Boot') {
-            steps {
-                sh 'mvn clean install -DskipTests'
-            }
-        }
-
-        stage('3. Analyse SonarQube') {
+        stage('2. Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('sonarqube') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=backend-app -Dsonar.projectName=backend-app'
+                    echo "🦊 Running SonarQube Scanner via Docker..."
+                    sh """
+                        docker run --rm \
+                        -e SONAR_HOST_URL=\${SONAR_HOST_URL} \
+                        -e SONAR_TOKEN=\${SONAR_AUTH_TOKEN} \
+                        -v \${WORKSPACE}:/usr/src \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=ia-chatbot-app \
+                        -Dsonar.projectName=ia-chatbot-app \
+                        -Dsonar.sources=. \
+                        -Dsonar.qualitygate.wait=false
+                    """
                 }
             }
         }
 
-        stage('4. Tests') {
+        stage('3. Security Scan (Trivy fs)') {
             steps {
-                sh 'mvn test || true'
+                echo "🔍 Scanning Python filesystem with Trivy..."
+                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v ${WORKSPACE}:/apps aquasec/trivy fs /apps --severity HIGH,CRITICAL --exit-code 0"
             }
         }
 
-        stage('5. Build Docker Image') {
+        stage('4. Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE}:${TAG} ."
-                sh "docker tag ${IMAGE}:${TAG} ${IMAGE}:latest"
+                echo "📦 Building IA Chatbot Docker Image..."
+                sh "docker build --no-cache -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
-        // 🛠️ هنا فين تدار التعديل: رجعنا الـ exit-code لـ 0 باش يدوز بالخضر
-        stage('6. Security Scan: Docker Image (Trivy)') {
+        stage('5. Security Scan (Trivy Image)') {
             steps {
-                echo 'Scanning Backend Image with Trivy...'
-                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --exit-code 0 --severity CRITICAL ${IMAGE}:${TAG}"
+                echo "🛡️ Scanning IA Docker Image with Trivy..."
+                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} --severity CRITICAL --exit-code 0"
             }
         }
 
-        stage('7. Push Docker Hub') {
+        stage('6. Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub',
-                    usernameVariable: 'USER',
-                    passwordVariable: 'PASS')]) {
-                    sh "echo \$PASS | docker login -u \$USER --password-stdin"
-                    sh "docker push ${IMAGE}:${TAG}"
-                    sh "docker push ${IMAGE}:latest"
+                withCredentials([usernamePassword(credentialsId: "${REGISTRY_CRED}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
+                    sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker tag ${DOCKER_HUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
+                    sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
                 }
             }
         }
 
-        stage('8. Deploy avec Ansible') {
+        stage('7. Deploy avec Ansible') {
             steps {
-                sh 'ssh -o StrictHostKeyChecking=no azureuser@74.161.163.110 "ansible-playbook -i ~/ansible/inventory.ini ~/ansible/deploy.yml"'
+                echo "🚀 Déploiement de l'application IA avec Ansible..."
+                sh "ssh -o StrictHostKeyChecking=no azureuser@74.161.163.110 'ansible-playbook -i ~/ansible/inventory.ini ~/ansible/deploy.yml --extra-vars \"image_tag=${IMAGE_TAG}\"'"
             }
         }
-
     }
 
     post {
-        success {
-            echo 'Pipeline backend réussi !'
-        }
-        failure {
-            echo 'Pipeline backend échoué — vérifier les logs'
-        }
         always {
             cleanWs()
         }
