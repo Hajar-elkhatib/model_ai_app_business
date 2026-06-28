@@ -1,7 +1,7 @@
 """
 chatbot_api.py
 ──────────────
-FastAPI application for the NexusAI Business Chatbot.
+FastAPI application for VentureLens Advisor.
 
 Run with:
     uvicorn chatbot_api:app --reload --port 8003
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════ #
 
 app = FastAPI(
-    title="NexusAI Business Chatbot API",
+    title="VentureLens Advisor API",
     version="1.0.0",
     description=(
         "AI-powered business advisor chatbot that orchestrates startup "
@@ -108,7 +108,7 @@ def health() -> dict[str, Any]:
     """Health-check endpoint."""
     return {
         "status": "ok",
-        "service": "NexusAI Business Chatbot API",
+        "service": "VentureLens Advisor API",
         "version": app.version,
     }
 
@@ -185,7 +185,7 @@ def chat_message(payload: ChatMessageInput) -> dict[str, Any]:
 def _log_startup_info() -> None:
     provider_info = get_llm_provider()
     logger.info("=" * 60)
-    logger.info("  NexusAI Business Chatbot API started")
+    logger.info("  VentureLens Advisor API started")
     logger.info("  Port        : %s", CHATBOT_API_PORT)
     logger.info("  LLM Provider: %s", provider_info["provider"])
     logger.info("  LLM Model   : %s", provider_info["model"])

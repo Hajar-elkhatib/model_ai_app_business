@@ -14,7 +14,7 @@ import chatbot_api
 
 
 PROJECT_DATA: dict[str, Any] = {
-    "project_name": "NexusAI Business Validator",
+    "project_name": "VentureLens Business Validator",
     "project_description": "A SaaS platform that uses AI and market data to validate startup ideas.",
     "sector": "SaaS",
     "funding_rounds": 1,

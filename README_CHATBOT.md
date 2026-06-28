@@ -1,6 +1,6 @@
-# 🤖 NexusAI Business Chatbot
+# 🤖 VentureLens Business Chatbot
 
-**AI-powered business advisor for the NexusAI platform — specialized in startup validation and entrepreneurial intelligence.**
+**AI-powered business advisor for the VentureLens platform — specialized in startup validation and entrepreneurial intelligence.**
 
 ---
 
@@ -27,7 +27,7 @@ It understands user intent, calls the appropriate AI endpoints, retrieves knowle
                              │ HTTP POST /api/v1/chatbot/message
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                  chatbot_api.py (port 8002)                     │
+│                  chatbot_api.py (port 8003)                     │
 │               FastAPI — Chatbot Endpoint                       │
 └────────┬───────────────┬───────────────┬───────────────────────┘
          │               │               │
@@ -40,7 +40,7 @@ It understands user intent, calls the appropriate AI endpoints, retrieves knowle
        │
        ▼ HTTP calls to existing APIs
 ┌─────────────────────────────────────────────────────────────────┐
-│          business_validation_api.py (port 8001)                │
+│          business_validation_api.py (port 8004)                │
 │   /startup-success  /sentiment  /market-analysis               │
 │   /specialists      /business-validation                       │
 └─────────────────────────────────────────────────────────────────┘
@@ -102,16 +102,16 @@ The chatbot will use structured template responses based on API results.
 pip install -r requirements.txt
 ```
 
-### 2. Start the main AI API (port 8001)
+### 2. Start the main AI API (port 8004)
 
 ```bash
-uvicorn business_validation_api:app --reload --port 8001
+uvicorn business_validation_api:app --reload --port 8004
 ```
 
-### 3. Start the chatbot API (port 8002)
+### 3. Start the chatbot API (port 8003)
 
 ```bash
-uvicorn chatbot_api:app --reload --port 8002
+uvicorn chatbot_api:app --reload --port 8003
 ```
 
 ### 4. (Optional) Start the Streamlit testing UI
@@ -120,7 +120,7 @@ uvicorn chatbot_api:app --reload --port 8002
 streamlit run chatbot_streamlit_app.py
 ```
 
-> **Note:** The main API (port 8001) must be running for the chatbot to call AI services. The chatbot still works without it but will report API errors.
+> **Note:** The main API (port 8004) must be running for the chatbot to call AI services. The chatbot still works without it but will report API errors.
 
 ---
 
@@ -133,7 +133,7 @@ streamlit run chatbot_streamlit_app.py
 {
   "message": "Validate my business idea",
   "project_data": {
-    "project_name": "NexusAI Business Validator",
+    "project_name": "VentureLens Business Validator",
     "project_description": "A SaaS platform that uses AI to validate startup ideas.",
     "sector": "SaaS",
     "country": "Morocco",
@@ -254,7 +254,7 @@ The chatbot API is designed for seamless integration:
 ### Spring Boot
 ```java
 // Call from Spring Boot using RestTemplate or WebClient
-WebClient client = WebClient.create("http://localhost:8002");
+WebClient client = WebClient.create("http://localhost:8003");
 Mono<ChatResponse> response = client.post()
     .uri("/api/v1/chatbot/message")
     .bodyValue(chatRequest)
@@ -266,7 +266,7 @@ Mono<ChatResponse> response = client.post()
 ```typescript
 // Call from Angular using HttpClient
 this.http.post<ChatResponse>(
-  'http://localhost:8002/api/v1/chatbot/message',
+  'http://localhost:8003/api/v1/chatbot/message',
   { message: userInput, project_data: projectData }
 ).subscribe(response => {
   this.chatMessages.push(response);

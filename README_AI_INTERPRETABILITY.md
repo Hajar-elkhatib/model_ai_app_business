@@ -42,7 +42,7 @@ python test_nvidia_llm_connection.py
 
 ```json
 {
-  "project_name": "NexusAI",
+  "project_name": "VentureLens",
   "project_description": "Plateforme SaaS qui valide les idées startup avec IA.",
   "sector": "SaaS",
   "funding_rounds": 2,
@@ -70,7 +70,7 @@ python test_nvidia_llm_connection.py
 ```json
 {
   "projectData": {
-    "project_name": "NexusAI",
+    "project_name": "VentureLens",
     "project_description": "Plateforme SaaS qui valide les idées startup avec IA.",
     "sector": "SaaS"
   },

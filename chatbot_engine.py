@@ -1,7 +1,7 @@
 """
 chatbot_engine.py
 ─────────────────
-Core orchestration engine for the NexusAI Business Chatbot.
+Core orchestration engine for the VentureLens Business Chatbot.
 
 Responsibilities:
   1. Detect user intent from natural language.
@@ -22,7 +22,9 @@ import requests
 
 from chatbot_config import (
     API_TIMEOUT_SECONDS,
+    CHATBOT_API_PORT,
     ENDPOINTS,
+    FASTAPI_BASE_URL,
     INTENT_KEYWORDS,
     is_fallback_mode,
 )
@@ -730,6 +732,30 @@ def _social_answer(user_message: str) -> str:
     return "I'm doing well, thanks. I'm ready to help with your project."
 
 
+def _is_api_status_question(user_message: str) -> bool:
+    text = _normalize_chat_text(user_message)
+    return (
+        any(term in text for term in ("api", "apis", "fastapi", "backend", "server", "service"))
+        and any(term in text for term in ("working", "works", "status", "running", "still", "health", "port", "fonctionne", "marche", "etat"))
+    )
+
+
+def _api_status_answer(user_message: str) -> str:
+    if _detect_user_language(user_message) == "fr":
+        return (
+            "Pour la configuration locale actuelle, Spring Boot fonctionne sur le port 8080, "
+            f"le service FastAPI IA principal fonctionne sur {FASTAPI_BASE_URL}, "
+            f"et l'API chatbot fonctionne sur le port {CHATBOT_API_PORT}. "
+            "Vous pouvez les verifier avec les endpoints /health ou en regardant les terminaux en cours d'execution."
+        )
+    return (
+        "For the current local setup, Spring Boot runs on port 8080, "
+        f"the main FastAPI AI service runs on {FASTAPI_BASE_URL}, "
+        f"and the chatbot API runs on port {CHATBOT_API_PORT}. "
+        "You can verify them using /health endpoints or by checking the running terminals."
+    )
+
+
 def _language_instruction(user_message: str, intent: str) -> str:
     language_line = (
         "Reponds en francais. Les titres de sections doivent aussi etre en francais."
@@ -953,6 +979,29 @@ def handle_chat_message(
                 intent="general_question",
                 api_results={},
                 model_name="social_short_response",
+                model_mode="rule_based",
+            )
+        return {
+            "intent": "general_question",
+            "answer": answer,
+            "api_results": {},
+            "api_errors": {},
+            "rag_context": [],
+            "recommendations": [],
+            "sources_used": [],
+            "memory_saved": {},
+            "fallback_mode": False,
+        }
+    if _is_api_status_question(user_message):
+        answer = _api_status_answer(user_message)
+        if chat_id:
+            memory_manager.save_exchange(
+                chat_id=chat_id,
+                user_message=user_message,
+                assistant_answer=answer,
+                intent="general_question",
+                api_results={},
+                model_name="api_status_local_config",
                 model_mode="rule_based",
             )
         return {

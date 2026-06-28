@@ -1,7 +1,7 @@
 """
 chatbot_db.py
 ──────────────
-MongoDB connector for the NexusAI Business Chatbot.
+MongoDB connector for the VentureLens Business Chatbot.
 Fetches user and business data to personalize the chat experience.
 """
 

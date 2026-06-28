@@ -1,20 +1,20 @@
-"""
+﻿"""
 rag_engine.py
-─────────────
-Simple RAG (Retrieval-Augmented Generation) engine for the NexusAI chatbot.
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Simple RAG (Retrieval-Augmented Generation) engine for the VentureLens chatbot.
 
 First version:
-  • Loads documents from ``data/knowledge_documents.json``.
-  • Falls back to embedded sample documents when the file is absent.
-  • Splits documents into chunks.
-  • Uses TF-IDF (scikit-learn) for retrieval, with a keyword fallback.
-  • Returns the top-k most relevant chunks.
+  â€¢ Loads documents from ``data/knowledge_documents.json``.
+  â€¢ Falls back to embedded sample documents when the file is absent.
+  â€¢ Splits documents into chunks.
+  â€¢ Uses TF-IDF (scikit-learn) for retrieval, with a keyword fallback.
+  â€¢ Returns the top-k most relevant chunks.
 
 Architecture notes for future upgrades:
-  • The ``retrieve_context`` function is the public interface.  Replace its
-    internals with MongoDB Atlas Vector Search when ready — callers won't
+  â€¢ The ``retrieve_context`` function is the public interface.  Replace its
+    internals with MongoDB Atlas Vector Search when ready â€” callers won't
     change.
-  • ``embeddingVector`` is stored as ``null`` for now; populate it later
+  â€¢ ``embeddingVector`` is stored as ``null`` for now; populate it later
     with a real embedding model.
 """
 
@@ -34,14 +34,14 @@ from chatbot_config import KNOWLEDGE_DOCS_PATH, RAG_ENABLED, RAG_TOP_K
 
 logger = logging.getLogger(__name__)
 
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 #                     SAMPLE DOCUMENTS (EMBEDDED)                           #
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 
 _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
     {
         "id": "doc_001",
-        "title": "Business Validation Score — How It Works",
+        "title": "Business Validation Score â€” How It Works",
         "content": (
             "The Business Validation Score is a composite metric that evaluates the overall "
             "viability of an entrepreneurial project. It combines four dimensions: Startup "
@@ -57,7 +57,7 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
     },
     {
         "id": "doc_002",
-        "title": "Startup Success Prediction — Model Explanation",
+        "title": "Startup Success Prediction â€” Model Explanation",
         "content": (
             "The Startup Success Prediction model is a supervised machine learning classifier "
             "trained on historical startup data. It takes as input: sector, funding rounds, "
@@ -74,7 +74,7 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
     },
     {
         "id": "doc_003",
-        "title": "Market Analysis Score — Methodology",
+        "title": "Market Analysis Score â€” Methodology",
         "content": (
             "The Market Analysis Score evaluates market potential using a data-driven scoring "
             "system. It is NOT a machine learning model. Data sources include: World Bank "
@@ -90,7 +90,7 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
     },
     {
         "id": "doc_004",
-        "title": "Sentiment Analysis — How Customer Opinions Are Analyzed",
+        "title": "Sentiment Analysis â€” How Customer Opinions Are Analyzed",
         "content": (
             "The Sentiment Analysis module uses a trained NLP pipeline to analyze customer "
             "reviews and opinions. Each text receives a sentiment score (0-100) and a label "
@@ -106,7 +106,7 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
     },
     {
         "id": "doc_005",
-        "title": "Specialist Recommendation — Matching Algorithm",
+        "title": "Specialist Recommendation â€” Matching Algorithm",
         "content": (
             "The Specialist Recommendation engine matches entrepreneurs with relevant experts. "
             "The matching score is computed from: semantic similarity between project description "
@@ -123,9 +123,9 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
     },
     {
         "id": "doc_006",
-        "title": "Platform FAQ — Frequently Asked Questions",
+        "title": "Platform FAQ â€” Frequently Asked Questions",
         "content": (
-            "Q: What is NexusAI? A: NexusAI is an intelligent platform for analyzing and "
+            "Q: What is VentureLens? A: VentureLens is an intelligent platform for analyzing and "
             "validating entrepreneurial projects using AI, market data, and sentiment analysis.\n\n"
             "Q: How accurate is the prediction? A: The prediction is based on historical data "
             "and should be used as guidance, not as a definitive answer. The confidence score "
@@ -146,9 +146,9 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
     },
     {
         "id": "doc_007",
-        "title": "Help Center — Getting Started",
+        "title": "Help Center â€” Getting Started",
         "content": (
-            "Welcome to NexusAI! Here's how to get started:\n\n"
+            "Welcome to VentureLens! Here's how to get started:\n\n"
             "1. Create a project: Enter your project name, description, and sector.\n"
             "2. Fill in project details: Add financial data (funding, revenue, burn rate), "
             "team information, and market data.\n"
@@ -190,9 +190,9 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
         "content": (
             "The platform supports all sectors, but ML model accuracy varies. Fully supported "
             "sectors (trained model): AI, SaaS, Fintech, Health, Ecommerce, Climate, Crypto. "
-            "Mapped sectors (keyword detection): Software → SaaS, Machine Learning → AI, "
-            "Banking → Fintech, Medical → Health, Retail → Ecommerce, Green Energy → Climate, "
-            "Blockchain → Crypto. Other sectors (heuristic fallback): Real Estate, Education, "
+            "Mapped sectors (keyword detection): Software â†’ SaaS, Machine Learning â†’ AI, "
+            "Banking â†’ Fintech, Medical â†’ Health, Retail â†’ Ecommerce, Green Energy â†’ Climate, "
+            "Blockchain â†’ Crypto. Other sectors (heuristic fallback): Real Estate, Education, "
             "Agriculture, Food, Transport, Construction, Art. The system uses keyword matching "
             "in both the sector name and project description to find the best mapping. Sector "
             "reliability ranges from 1.0 (exact match) to 0.55 (unknown sector)."
@@ -204,26 +204,28 @@ _SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
         "id": "doc_010",
         "title": "API Integration Guide",
         "content": (
-            "The NexusAI API provides the following endpoints:\n\n"
-            "GET /health — Check API health status.\n"
-            "GET /api/v1/models/status — Check loaded models and their status.\n"
-            "POST /api/v1/startup-success/predict — Predict startup success probability.\n"
-            "POST /api/v1/sentiment/analyze — Analyze text sentiment.\n"
-            "POST /api/v1/market-analysis/score — Score market potential.\n"
-            "POST /api/v1/specialists/recommend — Get specialist recommendations.\n"
-            "POST /api/v1/business-validation/score — Get comprehensive business validation.\n\n"
+            "The VentureLens API provides the following endpoints:\n\n"
+            "GET /health â€” Check API health status.\n"
+            "GET /api/v1/models/status â€” Check loaded models and their status.\n"
+            "POST /api/v1/startup-success/predict â€” Predict startup success probability.\n"
+            "POST /api/v1/sentiment/analyze â€” Analyze text sentiment.\n"
+            "POST /api/v1/market-analysis/score â€” Score market potential.\n"
+            "POST /api/v1/specialists/recommend â€” Get specialist recommendations.\n"
+            "POST /api/v1/business-validation/score â€” Get comprehensive business validation.\n\n"
             "All endpoints accept JSON payloads and return JSON responses. "
-            "The API runs on port 8001 by default. The chatbot API runs on port 8002. "
-            "Both APIs support CORS for cross-origin requests from Angular or any frontend."
+            "For the current local setup, Spring Boot runs on port 8080, "
+            "the main FastAPI AI service runs on port 8004, the chatbot API runs on port 8003, "
+            "Angular runs on port 4200, and MongoDB runs on port 27017. "
+            "Angular calls Spring Boot, and Spring Boot calls the FastAPI services."
         ),
         "source_type": "documentation",
         "metadata": {"module": "api"},
     },
 ]
 
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 #                         DOCUMENT LOADING                                  #
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 
 
 def load_documents(path: str | None = None) -> list[dict[str, Any]]:
@@ -243,9 +245,9 @@ def load_documents(path: str | None = None) -> list[dict[str, Any]]:
             logger.info("Loaded %d documents from %s", len(docs), doc_path)
             return docs
         except Exception as exc:
-            logger.warning("Failed to load %s: %s — using samples", doc_path, exc)
+            logger.warning("Failed to load %s: %s â€” using samples", doc_path, exc)
 
-    logger.info("Knowledge file not found at %s — using embedded samples.", doc_path)
+    logger.info("Knowledge file not found at %s â€” using embedded samples.", doc_path)
 
     # Persist samples so the user can edit them later
     try:
@@ -259,9 +261,9 @@ def load_documents(path: str | None = None) -> list[dict[str, Any]]:
     return list(_SAMPLE_DOCUMENTS)
 
 
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 #                          CHUNKING                                         #
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 
 
 def chunk_documents(
@@ -317,9 +319,9 @@ def chunk_documents(
     return chunks
 
 
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 #                         RETRIEVAL                                         #
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 
 # Module-level cache so we don't reload on every call.
 _CHUNKS_CACHE: list[dict[str, Any]] | None = None
@@ -430,9 +432,9 @@ def _tokenize(text: str) -> list[str]:
     return re.findall(r"\b\w+\b", text.lower())
 
 
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 #                        FORMATTING                                         #
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 
 
 def format_retrieved_context(chunks: list[dict[str, Any]]) -> str:
@@ -451,9 +453,9 @@ def format_retrieved_context(chunks: list[dict[str, Any]]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 #                 FUTURE: MongoDB Atlas Vector Search                       #
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 #
 # To switch to MongoDB Atlas Vector Search:
 #
@@ -483,7 +485,7 @@ def format_retrieved_context(chunks: list[dict[str, Any]]) -> str:
 #         return list(results)
 #
 # The rest of the chatbot code does not need to change.
-# ═══════════════════════════════════════════════════════════════════════════ #
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• #
 
 
 def reload_documents() -> None:
@@ -491,3 +493,4 @@ def reload_documents() -> None:
     global _CHUNKS_CACHE
     _CHUNKS_CACHE = None
     _ensure_chunks()
+

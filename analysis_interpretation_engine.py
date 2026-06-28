@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
 
 from llm_client import generate_json_response, get_llm_provider
 
+logger = logging.getLogger(__name__)
 
 ALLOWED_NEEDS = [
     "finance",
@@ -20,6 +22,257 @@ ALLOWED_NEEDS = [
     "cybersecurity",
     "legal",
 ]
+
+ALLOWED_DECISIONS = {"increase", "decrease", "keep"}
+ALLOWED_RELIABILITY = {"very_low", "low", "medium", "high"}
+ALLOWED_DATA_QUALITY = {"very_poor", "poor", "acceptable", "good"}
+
+
+def review_score_with_llm(
+    project_data: dict[str, Any],
+    raw_scores: dict[str, Any],
+    shap_explanation: dict[str, Any],
+) -> dict[str, Any]:
+    """Review the raw model score with a bounded NVIDIA contextual adjustment."""
+    raw_final = _bounded_score(_number(raw_scores.get("finalScore"), 0.0))
+    quality_signals = _detect_data_quality(project_data)
+    business_context = {
+        "projectStage": _first_non_empty(project_data.get("project_stage"), project_data.get("projectStage"), "UNKNOWN"),
+        "country": project_data.get("country"),
+        "city": _first_non_empty(project_data.get("city"), project_data.get("region"), ""),
+        "sector": project_data.get("sector"),
+        "targetMarketScope": _first_non_empty(project_data.get("target_market_scope"), project_data.get("targetMarketScope"), ""),
+    }
+    system_prompt = """
+You are NVIDIA LLM Score Review for VentureLens.
+Return only one strict JSON object. Do not include markdown, prose, code fences, comments, or explanations outside JSON.
+You may review the raw final score, but you must follow these rules:
+- Output keys: adjustment, reviewedFinalScore, scoreReliability, dataQualityLevel, decision, reason, warnings.
+- decision must be one of: increase, decrease, keep.
+- scoreReliability must be one of: very_low, low, medium, high.
+- dataQualityLevel must be one of: very_poor, poor, acceptable, good.
+- adjustment must be a number.
+- reviewedFinalScore must be a number between 0 and 100.
+- warnings must be an array of strings.
+- Normal adjustment limit is -15 to +15.
+- If dataQualityLevel is very_poor, only keep or decrease; do not increase.
+- If projectStage is IDEA_ONLY, missing users/revenue can justify a controlled increase, but only when problem, solution, target customers and context are meaningful.
+- If projectStage is ALREADY_LAUNCHED, missing users, revenue or feedback should not receive a strong increase.
+- Contradictory, fake, repeated, or meaningless data must reduce reliability and should decrease the score.
+- The final reviewed score must be between 0 and 100.
+Expected JSON shape:
+{"adjustment": 0, "reviewedFinalScore": 0, "scoreReliability": "medium", "dataQualityLevel": "acceptable", "decision": "keep", "reason": "Short business reason.", "warnings": []}
+"""
+    payload = {
+        "projectData": project_data,
+        "rawScores": raw_scores,
+        "shapExplanation": {
+            "positiveFactors": shap_explanation.get("positiveFactors", []),
+            "negativeFactors": shap_explanation.get("negativeFactors", []),
+        },
+        "businessContext": business_context,
+        "localQualitySignals": quality_signals,
+    }
+    response = generate_json_response(system_prompt, json.dumps(payload, ensure_ascii=False))
+    if response.get("fallback_mode") or response.get("error"):
+        warning = _score_review_warning(response)
+        logger.error(
+            "NVIDIA score review unavailable | warning=%s | error_type=%s | error=%s | raw_response=%s",
+            warning,
+            response.get("error_type"),
+            response.get("error"),
+            response.get("raw_response_preview"),
+        )
+        return _score_review_fallback(raw_final, warning)
+
+    parsed = response.get("json") or {}
+    if not parsed:
+        warning = _score_review_warning(response)
+        logger.error(
+            "NVIDIA score review parsing failed | warning=%s | parse_error=%s | raw_response=%s",
+            warning,
+            response.get("json_parse_error"),
+            (response.get("response_text") or "")[:1000],
+        )
+        return _score_review_fallback(raw_final, warning)
+
+    review = _sanitize_score_review(parsed, raw_final, project_data, quality_signals)
+    provider_info = get_llm_provider()
+    review["source"] = f"{provider_info['provider']}_llm" if provider_info["configured"] else "fallback_raw_model"
+    return review
+
+
+def _sanitize_score_review(
+    review: dict[str, Any],
+    raw_final: float,
+    project_data: dict[str, Any],
+    quality_signals: dict[str, Any],
+) -> dict[str, Any]:
+    data_quality = str(review.get("dataQualityLevel") or quality_signals["dataQualityLevel"]).strip().lower()
+    if data_quality not in ALLOWED_DATA_QUALITY:
+        data_quality = quality_signals["dataQualityLevel"]
+
+    reliability = str(review.get("scoreReliability") or quality_signals["scoreReliability"]).strip().lower()
+    if reliability not in ALLOWED_RELIABILITY:
+        reliability = quality_signals["scoreReliability"]
+
+    decision = str(review.get("decision") or "keep").strip().lower()
+    if decision not in ALLOWED_DECISIONS:
+        decision = "keep"
+
+    requested_adjustment = _number(review.get("adjustment"), 0.0)
+    project_stage = str(_first_non_empty(project_data.get("project_stage"), project_data.get("projectStage"), "")).upper()
+    is_fake = bool(quality_signals.get("isFakeOrInsufficient"))
+
+    min_adjustment, max_adjustment = -15.0, 15.0
+    if data_quality == "very_poor":
+        min_adjustment, max_adjustment = -30.0, 0.0
+    elif project_stage == "IDEA_ONLY" and not is_fake:
+        min_adjustment, max_adjustment = -15.0, 25.0
+
+    if is_fake:
+        max_adjustment = min(max_adjustment, 0.0)
+        if requested_adjustment > 0:
+            requested_adjustment = 0.0
+        if raw_final > 20 and requested_adjustment == 0:
+            requested_adjustment = -min(30.0, raw_final - 20.0)
+        decision = "decrease" if requested_adjustment < 0 else "keep"
+        data_quality = "very_poor"
+        reliability = "very_low"
+
+    bounded_adjustment = max(min_adjustment, min(max_adjustment, requested_adjustment))
+    reviewed_score = _bounded_score(raw_final + bounded_adjustment)
+    if abs(reviewed_score - raw_final) < 0.01:
+        decision = "keep"
+        bounded_adjustment = 0.0
+
+    warnings = _clean_list(review.get("warnings"))
+    for warning in quality_signals.get("warnings", []):
+        if warning not in warnings:
+            warnings.append(warning)
+
+    return {
+        "adjustment": round(bounded_adjustment, 2),
+        "reviewedFinalScore": round(reviewed_score, 2),
+        "scoreReliability": reliability,
+        "dataQualityLevel": data_quality,
+        "decision": decision,
+        "reason": str(review.get("reason") or quality_signals["reason"]).strip(),
+        "warnings": warnings,
+    }
+
+
+def _score_review_fallback(
+    raw_final: float,
+    warning: str = "NVIDIA score review unavailable: unknown error",
+) -> dict[str, Any]:
+    return {
+        "source": "fallback_raw_model",
+        "adjustment": 0.0,
+        "reviewedFinalScore": round(_bounded_score(raw_final), 2),
+        "scoreReliability": "medium",
+        "dataQualityLevel": "unknown",
+        "decision": "keep",
+        "reason": f"{warning}; raw model score used.",
+        "warnings": [warning],
+    }
+
+
+def _score_review_warning(response: dict[str, Any]) -> str:
+    error = str(response.get("error") or "").strip()
+    parse_error = str(response.get("json_parse_error") or "").strip()
+    if "timeout" in error.lower():
+        return "NVIDIA score review unavailable: timeout"
+    if "api error" in error.lower() or "http" in error.lower():
+        return "NVIDIA score review unavailable: API error"
+    if parse_error:
+        return f"NVIDIA score review unavailable: invalid JSON ({parse_error})"
+    if error:
+        return error
+    return "NVIDIA score review unavailable: invalid JSON"
+
+
+def _detect_data_quality(project_data: dict[str, Any]) -> dict[str, Any]:
+    text_fields = [
+        project_data.get("project_name"),
+        project_data.get("project_description"),
+        project_data.get("sector"),
+        project_data.get("problem"),
+        project_data.get("solution"),
+        project_data.get("target_customers"),
+        project_data.get("main_challenges"),
+    ]
+    present_fields = [value for value in text_fields if str(value or "").strip()]
+    meaningful = [_meaningful_text(value) for value in present_fields]
+    short_or_repeated = sum(1 for value in present_fields if _looks_fake_text(value))
+    description = str(project_data.get("project_description") or "")
+    has_business_context = len(description.split()) >= 10 or any(len(item.split()) >= 5 for item in meaningful)
+
+    warnings: list[str] = []
+    if short_or_repeated >= 3 or not has_business_context:
+        warnings.append("Project information is too short or generic to support a reliable validation score.")
+        return {
+            "isFakeOrInsufficient": True,
+            "scoreReliability": "very_low",
+            "dataQualityLevel": "very_poor",
+            "reason": "The project data appears incomplete, repeated, or not meaningful enough for reliable scoring.",
+            "warnings": warnings,
+        }
+    if len(meaningful) < 4:
+        warnings.append("Some important business context is missing.")
+        return {
+            "isFakeOrInsufficient": False,
+            "scoreReliability": "low",
+            "dataQualityLevel": "poor",
+            "reason": "The project has partial context, but key validation inputs are still missing.",
+            "warnings": warnings,
+        }
+    return {
+        "isFakeOrInsufficient": False,
+        "scoreReliability": "medium",
+        "dataQualityLevel": "acceptable",
+        "reason": "The project contains enough context for a controlled score review.",
+        "warnings": warnings,
+    }
+
+
+def _meaningful_text(value: Any) -> str:
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+    return text
+
+
+def _looks_fake_text(value: Any) -> bool:
+    text = _meaningful_text(value).lower()
+    if not text:
+        return True
+    if len(text) <= 3:
+        return True
+    compact = re.sub(r"[^a-z0-9]", "", text)
+    if compact and len(set(compact)) <= 2 and len(compact) <= 12:
+        return True
+    tokens = text.split()
+    return len(tokens) <= 2 and len(text) < 8
+
+
+def _number(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _bounded_score(value: float) -> float:
+    return max(0.0, min(100.0, float(value)))
+
+
+def _first_non_empty(*values: Any) -> str:
+    for value in values:
+        text = str(value or "").strip()
+        if text:
+            return text
+    return ""
 
 
 def build_business_interpretation(

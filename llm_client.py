@@ -1,7 +1,7 @@
 """
 llm_client.py
 -------------
-NVIDIA-only LLM client for the NexusAI Business Chatbot, analysis
+NVIDIA-only LLM client for the VentureLens Business Chatbot, analysis
 interpretation, and report content generation.
 
 Secrets are read from environment variables through chatbot_config.py.
@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import traceback
 from typing import Any
 
 import requests
@@ -68,9 +69,19 @@ def generate_llm_response(
     try:
         return _call_nvidia(system_prompt, user_message, context, messages_history)
     except Exception as exc:
-        logger.error("NVIDIA LLM call failed: %s", exc)
+        diagnostic = _describe_llm_exception(exc)
+        logger.error(
+            "NVIDIA LLM call failed | type=%s | message=%s | status=%s | raw_response=%s",
+            diagnostic["error_type"],
+            diagnostic["message"],
+            diagnostic.get("status_code"),
+            diagnostic.get("raw_response_preview"),
+        )
+        logger.debug("NVIDIA LLM traceback:\n%s", diagnostic["traceback"])
         result = _fallback_response(system_prompt, user_message, context)
-        result["error"] = f"NVIDIA LLM call failed: {exc}"
+        result["error"] = diagnostic["public_error"]
+        result["error_type"] = diagnostic["error_type"]
+        result["raw_response_preview"] = diagnostic.get("raw_response_preview")
         return result
 
 
@@ -81,7 +92,16 @@ def generate_json_response(
 ) -> dict[str, Any]:
     """Generate a response expected to be JSON and parse it safely."""
     result = generate_llm_response(system_prompt, user_message, context)
-    result["json"] = _parse_json_object(result.get("response_text", ""))
+    parsed, parse_error = _parse_json_object_with_error(result.get("response_text", ""))
+    result["json"] = parsed
+    result["json_parse_error"] = parse_error
+    if parse_error:
+        preview = (result.get("response_text") or "")[:1000]
+        logger.error(
+            "NVIDIA JSON parsing failed | error=%s | raw_response=%s",
+            parse_error,
+            preview,
+        )
     return result
 
 
@@ -176,26 +196,94 @@ def _read_streaming_response(response: requests.Response) -> str:
 
 
 def _parse_json_object(text: str) -> dict[str, Any] | None:
+    parsed, _ = _parse_json_object_with_error(text)
+    return parsed
+
+
+def _parse_json_object_with_error(text: str) -> tuple[dict[str, Any] | None, str | None]:
     if not text:
-        return None
+        return None, "empty response"
     cleaned = text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`").strip()
-        if cleaned.lower().startswith("json"):
-            cleaned = cleaned[4:].strip()
-    try:
-        data = json.loads(cleaned)
-        return data if isinstance(data, dict) else None
-    except json.JSONDecodeError:
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start >= 0 and end > start:
-            try:
-                data = json.loads(cleaned[start : end + 1])
-                return data if isinstance(data, dict) else None
-            except json.JSONDecodeError:
-                return None
+
+    candidates = [cleaned]
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, flags=re.IGNORECASE | re.DOTALL)
+    if fence_match:
+        candidates.insert(0, fence_match.group(1).strip())
+
+    extracted = _extract_first_json_object(cleaned)
+    if extracted:
+        candidates.append(extracted)
+
+    last_error = "invalid JSON"
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate)
+            if isinstance(data, dict):
+                return data, None
+            last_error = "JSON root is not an object"
+        except json.JSONDecodeError as exc:
+            last_error = f"invalid JSON: {exc.msg} at char {exc.pos}"
+    return None, last_error
+
+
+def _extract_first_json_object(text: str) -> str | None:
+    start = text.find("{")
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
     return None
+
+
+def _describe_llm_exception(exc: Exception) -> dict[str, Any]:
+    raw_response = None
+    status_code = None
+    response = getattr(exc, "response", None)
+    if response is not None:
+        status_code = getattr(response, "status_code", None)
+        try:
+            raw_response = response.text
+        except Exception:
+            raw_response = None
+
+    error_type = type(exc).__name__
+    message = str(exc)
+    if isinstance(exc, requests.exceptions.Timeout):
+        public_error = "NVIDIA score review unavailable: timeout"
+    elif isinstance(exc, requests.exceptions.HTTPError):
+        public_error = "NVIDIA score review unavailable: API error"
+    elif isinstance(exc, requests.exceptions.RequestException):
+        public_error = "NVIDIA score review unavailable: network/API error"
+    else:
+        public_error = f"NVIDIA score review unavailable: {error_type}"
+
+    return {
+        "error_type": error_type,
+        "message": message,
+        "status_code": status_code,
+        "raw_response_preview": (raw_response or "")[:1000] if raw_response else None,
+        "public_error": public_error,
+        "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+    }
 
 
 def _fallback_response(system_prompt: str, user_message: str, context: str) -> dict[str, Any]:

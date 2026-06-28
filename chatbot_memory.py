@@ -1,7 +1,7 @@
 """
 chatbot_memory.py
 ─────────────────
-Conversation memory manager for the NexusAI Business Chatbot.
+Conversation memory manager for the VentureLens Business Chatbot.
 
 Storage back-ends:
   • **local** (default) — JSON file on disk + in-memory dict.

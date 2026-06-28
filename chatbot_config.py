@@ -1,7 +1,7 @@
 """
 chatbot_config.py
 ─────────────────
-Central configuration for the NexusAI Business Chatbot.
+Central configuration for the VentureLens Business Chatbot.
 
 All secrets are loaded from environment variables (via python-dotenv).
 No API key is ever hard-coded.
@@ -23,7 +23,7 @@ except ImportError:
 
 # ─────────────────────────────── API URLs ────────────────────────────────── #
 
-FASTAPI_BASE_URL: str = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8004")
+FASTAPI_BASE_URL: str = os.getenv("FASTAPI_BASE_URL", "http://localhost:8004")
 CHATBOT_API_PORT: int = int(os.getenv("CHATBOT_API_PORT", "8003"))
 
 # ──────────────────────────── NVIDIA LLM ─────────────────────────────────── #

@@ -57,6 +57,7 @@ Rules:
 - Do not return raw objects, empty maps, Python/Java list text, or technical fields.
 - If source information is missing, write "Insufficient data available."
 - Keep each section concise so the final PDF fits in two pages.
+- Mention that the final score combines predictive model outputs with a controlled NVIDIA LLM contextual review based on project stage, data quality, SHAP factors, and local market context.
 """
     payload = {
         "project": project,
@@ -116,8 +117,9 @@ def _fallback_report(
 
     summary = (
         f"{name} is a {sector} project. The current validation score is "
-        f"{_score_text(analysis.get('finalScore'))}. The report combines the available AI analysis, "
-        "market signals, customer feedback, and recommendations without changing the model scores."
+        f"{_score_text(analysis.get('finalScore'))}. The final score combines predictive model outputs "
+        "with a controlled NVIDIA LLM contextual review based on project stage, data quality, SHAP factors, "
+        "and local market context."
     )
 
     return {
@@ -156,7 +158,8 @@ def _normalize_project(project_data: dict[str, Any]) -> dict[str, Any]:
         "description": description,
         "sector": _first_non_empty(_get(project_data, "sector"), "Business"),
         "country": _first_non_empty(_get(project_data, "country"), _get(project_data, "region"), ""),
-        "stage": _first_non_empty(_get(project_data, "project_stage"), _get(project_data, "projectStatus"), ""),
+        "city": _first_non_empty(_get(project_data, "city"), _get(project_data, "region"), ""),
+        "stage": _first_non_empty(_get(project_data, "project_stage"), _get(project_data, "projectStage"), _get(project_data, "projectStatus"), ""),
         "teamSize": _get(project_data, "team_size", _get(project_data, "teamSize")),
         "founderExperienceYears": _get(project_data, "founder_experience_years", _get(project_data, "founderExperienceYears")),
         "marketSizeBillion": _get(project_data, "market_size_billion", _get(project_data, "marketSizeBillion")),
@@ -181,7 +184,11 @@ def _normalize_analysis(analysis_result: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "finalScore": _number(_first_value(
-            _get(scores, "finalScore"), _get(raw_scores, "finalScore"), _get(analysis_result, "finalScore")
+            _get(analysis_result, "llmReviewedFinalScore"),
+            _get(scores, "finalScore"),
+            _get(raw_scores, "finalScore"),
+            _get(analysis_result, "finalScore"),
+            _get(analysis_result, "rawModelFinalScore"),
         )),
         "startupSuccessScore": _number(_first_value(
             _get(scores, "startupSuccessScore"), _get(raw_scores, "startupSuccessScore"), _get(analysis_result, "startupSuccessScore")
@@ -207,6 +214,7 @@ def _normalize_analysis(analysis_result: dict[str, Any]) -> dict[str, Any]:
         "recommendedSpecialists": _as_list(_first_value(_get(analysis_result, "recommendedSpecialists"), _get(raw, "recommendedSpecialists"))),
         "warnings": _as_list(_first_value(_get(analysis_result, "warnings"), _get(raw, "warnings"))),
         "interpretation": _first_non_empty(_get(analysis_result, "interpretation"), _get(raw, "interpretation"), ""),
+        "methodologyNote": "The final score combines predictive model outputs with a controlled NVIDIA LLM contextual review based on project stage, data quality, SHAP factors, and local market context.",
     }
 
 
@@ -246,6 +254,7 @@ def _clean_analysis(value: Any, fallback: dict[str, Any]) -> dict[str, Any]:
         result[key] = _as_list(_first_value(fallback.get(key), source.get(key)))
     result["recommendations"] = result["recommendations"][:4]
     result["interpretation"] = _clean_text(_first_non_empty(fallback.get("interpretation"), source.get("interpretation"), ""))
+    result["methodologyNote"] = _clean_text(_first_non_empty(fallback.get("methodologyNote"), source.get("methodologyNote"), ""))
     return result
 
 

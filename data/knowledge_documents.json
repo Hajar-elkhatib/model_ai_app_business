@@ -1,8 +1,8 @@
 [
   {
     "id": "doc_001",
-    "title": "Business Validation Score — How It Works",
-    "content": "The Business Validation Score is a composite metric that evaluates the overall viability of an entrepreneurial project. It combines four dimensions: Startup Success Score (40%), Market Sentiment Score (25%), Market Analysis Score (20%), and Specialist/Risk Score (15%). The final score ranges from 0 to 100. A score above 75 indicates strong validation, 60-75 is promising but needs further validation, 45-60 is risky and needs more proof, and below 45 is weak validation. The confidence score indicates how reliable the validation is based on data completeness and sector reliability. Weights can be customized but default to the standard distribution. The final score is adjusted by sector reliability — known sectors (AI, SaaS, Fintech, Health, Ecommerce, Climate, Crypto) receive full weight, while unknown sectors receive a reduced weight.",
+    "title": "Business Validation Score â€” How It Works",
+    "content": "The Business Validation Score is a composite metric that evaluates the overall viability of an entrepreneurial project. It combines four dimensions: Startup Success Score (40%), Market Sentiment Score (25%), Market Analysis Score (20%), and Specialist/Risk Score (15%). The final score ranges from 0 to 100. A score above 75 indicates strong validation, 60-75 is promising but needs further validation, 45-60 is risky and needs more proof, and below 45 is weak. The confidence score indicates how reliable the validation is based on data completeness and sector reliability.",
     "source_type": "faq",
     "metadata": {
       "module": "business_validation"
@@ -10,8 +10,8 @@
   },
   {
     "id": "doc_002",
-    "title": "Startup Success Prediction — Model Explanation",
-    "content": "The Startup Success Prediction model is a supervised machine learning classifier trained on historical startup data. It takes as input: sector, funding rounds, founder experience years, team size, market size (billion $), product traction (users), burn rate (million $/month), revenue (million $), investor type, and founder background. The model outputs a success probability (0-100%) and a prediction label (Success or Failure). Feature engineering includes traction per employee (product_traction_users / team_size) and burn-to-revenue ratio (burn_rate_million / revenue_adjusted). The model supports sectors: AI, Climate, Crypto, Ecommerce, Fintech, Health, and SaaS. For other sectors, a heuristic fallback is used with reduced confidence. The model was trained using XGBoost with hyperparameter tuning. Revenue values entered in millions are internally converted to match the training data scale.",
+    "title": "Startup Success Prediction â€” Model Explanation",
+    "content": "The Startup Success Prediction model is a supervised machine learning classifier trained on historical startup data. It takes as input: sector, funding rounds, founder experience years, team size, market size (billion $), product traction (users), burn rate (million $/month), revenue (million $), investor type, and founder background. The model outputs a success probability (0-100%) and a prediction label (Success or Failure). Feature engineering includes traction per employee and burn-to-revenue ratio. The model supports sectors: AI, Climate, Crypto, Ecommerce, Fintech, Health, and SaaS. For other sectors, a heuristic fallback is used with reduced confidence.",
     "source_type": "documentation",
     "metadata": {
       "module": "startup_success"
@@ -19,8 +19,8 @@
   },
   {
     "id": "doc_003",
-    "title": "Market Analysis Score — Methodology",
-    "content": "The Market Analysis Score evaluates market potential using a data-driven scoring system. It is NOT a machine learning model. Data sources include: World Bank Indicators API (GDP growth, internet penetration, ease of doing business), Google Trends CSV (optional search trend data), and project inputs (market size, growth rate, competition level, traction). Sub-scores include: market size score (35% weight), market growth score (30% weight), competition score (20% weight), and traction score (15% weight). The final market score is a weighted average of all sub-scores, ranging from 0 to 100. The system can automatically collect macroeconomic indicators from the World Bank API for the specified country. Competition levels are mapped as: low=85, medium=60, high=35. The search trend score from Google Trends provides additional signal about market interest.",
+    "title": "Market Analysis Score â€” Methodology",
+    "content": "The Market Analysis Score evaluates market potential using a data-driven scoring system. It is NOT a machine learning model. Data sources include: World Bank Indicators API (GDP growth, internet penetration, ease of business), Google Trends CSV (optional), and project inputs (market size, growth rate, competition level, traction). Sub-scores include: market size score, market growth score, competition score, traction score, and search trend score. The final market score is a weighted average of all sub-scores. The system can automatically collect macroeconomic indicators from the World Bank API for the specified country.",
     "source_type": "documentation",
     "metadata": {
       "module": "market_analysis"
@@ -28,8 +28,8 @@
   },
   {
     "id": "doc_004",
-    "title": "Sentiment Analysis — How Customer Opinions Are Analyzed",
-    "content": "The Sentiment Analysis module uses a trained NLP pipeline to analyze customer reviews and opinions. Each text receives a sentiment score (0-100) and a label (positive if score >= 50, negative otherwise). The system calculates an average sentiment score across all provided texts and an overall sentiment label. When the trained model is unavailable, a keyword-based fallback is used. Positive keywords include: love, good, great, excellent, amazing, useful, demand, growing, positive, recommend, like, best, fast, easy, valuable. Negative keywords include: bad, poor, expensive, complain, hate, slow, uncertain, problem, difficult, negative, risk, weak, fail, failure, low. For best results, provide at least 3-5 customer opinions or reviews. The model was trained on labeled sentiment data using scikit-learn pipelines with TF-IDF vectorization.",
+    "title": "Sentiment Analysis â€” How Customer Opinions Are Analyzed",
+    "content": "The Sentiment Analysis module uses a trained NLP pipeline to analyze customer reviews and opinions. Each text receives a sentiment score (0-100) and a label (positive or negative). The system calculates an average sentiment score across all provided texts and an overall label. When the trained model is unavailable, a keyword-based fallback is used. Positive keywords include: love, good, great, excellent, amazing, useful, demand, growing, recommend. Negative keywords include: bad, poor, expensive, complain, hate, slow, uncertain, problem, difficult. For best results, provide at least 3-5 customer opinions or reviews.",
     "source_type": "documentation",
     "metadata": {
       "module": "sentiment_analysis"
@@ -37,8 +37,8 @@
   },
   {
     "id": "doc_005",
-    "title": "Specialist Recommendation — Matching Algorithm",
-    "content": "The Specialist Recommendation engine matches entrepreneurs with relevant experts using a hybrid scoring system. The matching score is computed from multiple factors: semantic similarity between project description and specialist bio/expertise (using TF-IDF cosine similarity), skills match (overlap between project needs and specialist skills), sector match (bonus for specialists in the same sector), rating (specialist's average rating normalized), availability (available specialists get priority scoring), budget compatibility (hourly rate compared to project budget), language match (preferred language alignment), and location proximity. Results are ranked by the composite recommendation score from 0 to 100. Each specialist recommendation includes a reason explaining why they were matched. In production, specialist profiles come from MongoDB. In demo mode, sample CSV data with pre-defined specialists is used.",
+    "title": "Specialist Recommendation â€” Matching Algorithm",
+    "content": "The Specialist Recommendation engine matches entrepreneurs with relevant experts. The matching score is computed from: semantic similarity between project description and specialist bio/expertise (TF-IDF cosine similarity), skills match (overlap between project needs and specialist skills), sector match (bonus for same sector), rating (specialist's average rating), availability (available specialists get priority), budget compatibility (hourly rate vs project budget), language match, and location proximity. Results are ranked by the composite recommendation score. In production, specialist profiles come from MongoDB. In demo mode, sample CSV data is used.",
     "source_type": "documentation",
     "metadata": {
       "module": "specialist_recommendation"
@@ -46,8 +46,8 @@
   },
   {
     "id": "doc_006",
-    "title": "Platform FAQ — Frequently Asked Questions",
-    "content": "Q: What is NexusAI? A: NexusAI is an intelligent platform for analyzing and validating entrepreneurial projects using AI, market data, and sentiment analysis. It helps entrepreneurs make data-driven decisions about their business ideas.\n\nQ: How accurate is the prediction? A: The prediction is based on historical startup data and should be used as guidance, not as a definitive answer. The confidence score indicates how reliable the analysis is based on data completeness.\n\nQ: What data do I need to provide? A: At minimum, you need: project name, description, and sector. For better results, provide financials (funding rounds, team size, revenue, burn rate), market data (market size, growth rate, competition), and customer opinions.\n\nQ: Can I use it for any sector? A: Yes, but the ML model works best for: AI, SaaS, Fintech, Health, Ecommerce, Climate, and Crypto. Other sectors use a heuristic fallback with lower confidence.\n\nQ: Is my data secure? A: Yes, all data is processed on the server and is not shared with third parties. No data is stored permanently unless you explicitly save it.\n\nQ: What languages does the chatbot support? A: The chatbot supports English and French. It responds in the same language as your question.\n\nQ: How does the chatbot work? A: The chatbot detects your intent from your message, calls the appropriate AI services (startup prediction, market analysis, sentiment analysis, specialist recommendation), retrieves relevant knowledge from internal documents, and generates a comprehensive response using an external LLM or structured templates.",
+    "title": "Platform FAQ â€” Frequently Asked Questions",
+    "content": "Q: What is VentureLens? A: VentureLens is an intelligent platform for analyzing and validating entrepreneurial projects using AI, market data, and sentiment analysis.\n\nQ: How accurate is the prediction? A: The prediction is based on historical data and should be used as guidance, not as a definitive answer. The confidence score indicates reliability.\n\nQ: What data do I need? A: At minimum, you need: project name, description, sector, and basic financials (funding, team size, revenue, burn rate).\n\nQ: Can I use it for any sector? A: Yes, but the ML model works best for: AI, SaaS, Fintech, Health, Ecommerce, Climate, and Crypto. Other sectors use a heuristic fallback.\n\nQ: Is my data secure? A: Yes, all data is processed locally on the server and is not shared with third parties.\n\nQ: How does the chatbot work? A: The chatbot detects your intent, calls the appropriate AI services, retrieves relevant knowledge, and generates a comprehensive response.",
     "source_type": "faq",
     "metadata": {
       "module": "general"
@@ -55,8 +55,8 @@
   },
   {
     "id": "doc_007",
-    "title": "Help Center — Getting Started Guide",
-    "content": "Welcome to NexusAI! Here's how to get started with the platform:\n\n1. Create a project: Enter your project name, description, and sector. This is the foundation for all analyses.\n\n2. Fill in project details: Add financial data (funding rounds, revenue, burn rate), team information (team size, founder experience), and market data (market size, growth rate, competition level).\n\n3. Run analyses: Use individual modules — predict startup success, analyze market potential, evaluate customer sentiment, or find specialist consultants.\n\n4. Get business validation: The Business Validation Score combines all analyses into a single comprehensive score with confidence level.\n\n5. Chat with the AI advisor: Use the chatbot to ask questions, get personalized recommendations, generate business plans, and create marketing strategies.\n\n6. Generate reports: Export your analysis results as structured reports for stakeholders.\n\nTips for best results:\n- Provide as much data as possible for more accurate results.\n- Include at least 3-5 customer opinions for better sentiment analysis.\n- Specify your country for relevant macroeconomic data from World Bank.\n- Use the chatbot to explore different aspects of your analysis.\n- Compare results across different scenarios by adjusting inputs.",
+    "title": "Help Center â€” Getting Started",
+    "content": "Welcome to VentureLens! Here's how to get started:\n\n1. Create a project: Enter your project name, description, and sector.\n2. Fill in project details: Add financial data (funding, revenue, burn rate), team information, and market data.\n3. Run analysis: Use the platform to predict startup success, analyze market potential, evaluate customer sentiment, and find specialist consultants.\n4. Get validation: The Business Validation Score combines all analyses into a single comprehensive score.\n5. Chat with the AI: Use the chatbot to ask questions, get recommendations, generate business plans, and create marketing strategies.\n6. Generate reports: Export your analysis results as structured reports.\n\nTips:\n- Provide as much data as possible for more accurate results.\n- Include customer opinions for better sentiment analysis.\n- Specify your country for relevant market data.\n- Use the chatbot to explore different aspects of your analysis.",
     "source_type": "help_center",
     "metadata": {
       "module": "general"
@@ -65,7 +65,7 @@
   {
     "id": "doc_008",
     "title": "Understanding Confidence Scores",
-    "content": "The confidence score (0-100%) indicates how reliable the business validation result is. It is calculated from three factors: sector reliability (known sectors like AI, SaaS, Fintech score higher at 1.0, while unknown sectors score 0.55), number of opinions provided (more customer opinions increase confidence, up to 5 opinions for maximum contribution), and structured data completeness (more filled data fields like revenue, team size, market size increase confidence). A confidence score above 80% means the analysis is highly reliable and based on comprehensive data. Between 60-80% means moderately reliable with some data gaps. Below 60% means the analysis should be interpreted with caution due to missing data or unknown sector. To improve your confidence score: use a well-known sector, provide at least 5 customer opinions, and fill in all project data fields including country, competition level, market growth rate, and investor type.",
+    "content": "The confidence score (0-100%) indicates how reliable the validation result is. It depends on: sector reliability (known sectors score higher), number of opinions provided (more opinions = higher confidence), and structured data completeness (more filled fields = higher confidence). A confidence score above 80% means the analysis is highly reliable. Between 60-80% means moderately reliable. Below 60% means the analysis should be interpreted with caution. To improve confidence: use a well-known sector, provide at least 5 customer opinions, and fill in all project data fields including country, competition level, and market growth rate.",
     "source_type": "documentation",
     "metadata": {
       "module": "business_validation"
@@ -74,7 +74,7 @@
   {
     "id": "doc_009",
     "title": "Sector Support and Mapping",
-    "content": "The platform supports all sectors, but ML model accuracy varies by sector. Fully supported sectors with trained model data: AI, SaaS, Fintech, Health, Ecommerce, Climate, Crypto. These receive a sector reliability of 1.0. Keyword-mapped sectors are detected from project description: 'software' or 'cloud' maps to SaaS, 'machine learning' or 'automation' maps to AI, 'banking' or 'payment' maps to Fintech, 'medical' or 'wellness' maps to Health, 'retail' or 'marketplace' maps to Ecommerce, 'solar' or 'sustainability' maps to Climate, 'blockchain' or 'web3' maps to Crypto. These receive a reliability of 0.85. Other sectors like Real Estate, Education, Agriculture, Food, Transport receive a reliability of 0.55-0.65 and use heuristic scoring instead of the trained ML model. The system checks both the sector field and the project description for keyword matching.",
+    "content": "The platform supports all sectors, but ML model accuracy varies. Fully supported sectors (trained model): AI, SaaS, Fintech, Health, Ecommerce, Climate, Crypto. Mapped sectors (keyword detection): Software â†’ SaaS, Machine Learning â†’ AI, Banking â†’ Fintech, Medical â†’ Health, Retail â†’ Ecommerce, Green Energy â†’ Climate, Blockchain â†’ Crypto. Other sectors (heuristic fallback): Real Estate, Education, Agriculture, Food, Transport, Construction, Art. The system uses keyword matching in both the sector name and project description to find the best mapping. Sector reliability ranges from 1.0 (exact match) to 0.55 (unknown sector).",
     "source_type": "documentation",
     "metadata": {
       "module": "startup_success"
@@ -83,19 +83,10 @@
   {
     "id": "doc_010",
     "title": "API Integration Guide",
-    "content": "The NexusAI API provides REST endpoints for integration through Spring Boot. Angular should call Spring Boot, and Spring Boot should call FastAPI. GET /health checks API health. GET /api/v1/models/status checks which ML models are loaded. POST /api/v1/startup-success/predict predicts startup success probability. POST /api/v1/sentiment/analyze analyzes a list of feedback texts. POST /api/v1/market-analysis/score scores market potential. POST /api/v1/specialists/recommend returns specialist recommendations. POST /api/v1/business-validation/score returns the composite validation score. POST /api/v1/business-validation/analyze returns the full project analysis with scores, startup prediction, SHAP or fallback explanation, strengths, weaknesses, recommendations, generated needs, warnings and recommended specialists. POST /api/v1/reports/generate-content generates text content for the report. The main AI API runs locally on http://127.0.0.1:8004. The chatbot API runs locally on http://127.0.0.1:8003. Both support CORS and return JSON.",
+    "content": "The VentureLens API provides the following endpoints:\n\nGET /health â€” Check API health status.\nGET /api/v1/models/status â€” Check loaded models and their status.\nPOST /api/v1/startup-success/predict â€” Predict startup success probability.\nPOST /api/v1/sentiment/analyze â€” Analyze text sentiment.\nPOST /api/v1/market-analysis/score â€” Score market potential.\nPOST /api/v1/specialists/recommend â€” Get specialist recommendations.\nPOST /api/v1/business-validation/score â€” Get comprehensive business validation.\nPOST /api/v1/business-validation/analyze â€” Run the complete project analysis.\n\nFor the current local setup, Spring Boot runs on port 8080, the main FastAPI AI service runs on port 8004, the chatbot API runs on port 8003, Angular runs on port 4200, and MongoDB runs on port 27017. Angular calls Spring Boot, and Spring Boot calls the FastAPI services.",
     "source_type": "documentation",
     "metadata": {
       "module": "api"
-    }
-  },
-  {
-    "id": "doc_011",
-    "title": "Reports and Short Business Plan — Content Generation",
-    "content": "The report generation module creates textual report content after the business analysis has already calculated all scores. NVIDIA is used only to generate or polish narrative text such as the executive summary, analysis summary, recommendations, short business plan and short marketing strategy. NVIDIA must never modify finalScore, startupSuccessScore, marketAnalysisScore, marketOpinionScore, SHAP factors, generated needs or specialist recommendation scores. The PDF file itself is generated later by Spring Boot. A complete report should include: title, executive summary, scores, analysis, strengths, weaknesses, recommendations, warnings, recommended specialists when available, a short business plan, and a short marketing strategy. If information is missing, the report should state the limitation instead of inventing data.",
-    "source_type": "documentation",
-    "metadata": {
-      "module": "reports"
     }
   }
 ]

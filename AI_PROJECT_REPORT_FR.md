@@ -1,6 +1,6 @@
-# Rapport Global - Partie IA NexusAI
+# Rapport Global - Partie IA VentureLens
 
-Ce document explique ce qui a ete fait dans la partie IA du projet **NexusAI - AI Business Intelligence Platform**. Il sert a comprendre les fichiers, les datasets, les modeles, les APIs et ce qu'il faut presenter devant le professeur.
+Ce document explique ce qui a ete fait dans la partie IA du projet **VentureLens - AI Business Validation Platform**. Il sert a comprendre les fichiers, les datasets, les modeles, les APIs et ce qu'il faut presenter devant le professeur.
 
 ## 1. Idee Generale Du Projet IA
 
@@ -311,7 +311,7 @@ Recommander les specialistes les plus adaptes a un projet.
 
 ### Pourquoi pas un dataset public ?
 
-Parce que dans le produit final, on ne doit pas recommander des specialistes d'un dataset externe. On doit recommander les specialistes inscrits dans la plateforme NexusAI, donc les donnees viendront de MongoDB.
+Parce que dans le produit final, on ne doit pas recommander des specialistes d'un dataset externe. On doit recommander les specialistes inscrits dans la plateforme VentureLens, donc les donnees viendront de MongoDB.
 
 Le CSV actuel est seulement un jeu de test.
 
@@ -418,7 +418,7 @@ Endpoints:
 Commande:
 
 ```bash
-uvicorn business_validation_api:app --reload --port 8001
+uvicorn business_validation_api:app --reload --port 8004
 ```
 
 ## 10. Streamlit
@@ -455,7 +455,7 @@ Terminal 1:
 
 ```bash
 pip install -r requirements.txt
-uvicorn business_validation_api:app --reload --port 8001
+uvicorn business_validation_api:app --reload --port 8004
 ```
 
 Terminal 2:

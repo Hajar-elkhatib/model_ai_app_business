@@ -15,7 +15,7 @@ from rag_engine import retrieve_context
 
 
 PROJECT_PAYLOAD: dict[str, Any] = {
-    "project_name": "NexusAI Business Validator",
+    "project_name": "VentureLens Business Validator",
     "project_description": "A SaaS platform that uses AI and market data to validate startup ideas.",
     "sector": "SaaS",
     "funding_rounds": 1,
@@ -135,7 +135,7 @@ def main() -> None:
         bot.post(
             "/api/v1/chatbot/message",
             json={
-                "message": "Explique brièvement le score Startup Success dans NexusAI.",
+                "message": "Explique brièvement le score Startup Success dans VentureLens.",
                 "project_data": {},
                 "conversation_history": [],
                 "chat_id": "audit-chat",
